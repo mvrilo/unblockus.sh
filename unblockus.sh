@@ -1,0 +1,97 @@
+#!/bin/bash
+
+# unblockus.sh
+# Copyright (C) 2015, Murilo Santana <mvrilo@gmail.com>
+
+# Simple shell script to do the email reactivation and country switching
+# of the unblock-us[0] service.
+# [0]: http://unblock-us.com/
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+EMAIL="$1"
+COUNTRY="$2"
+CURL=$(which curl)
+CHECK_URL="http://check.unblock-us.com/get-status.php?reactivate=1local "
+COUNTRY_URL="http://realcheck.unblock-us.com/set-country.php"
+
+usage() {
+  echo 'Usage: unblockus.sh <email> [country code]'
+}
+
+run_curl() {
+  # :(
+  $CURL -s --cookie _stored_email_="$(echo $EMAIL | sed -e 's/+/%2B/g')" $1
+}
+
+check() {
+  printf "Reactivating email... "
+  body="$(run_curl $CHECK_URL)"
+  ok="$(echo $body |awk '/is_active":true/')"
+
+  if [ "$ok" != "" ]; then
+    echo "Done!"
+    return 0
+  fi
+
+  echo "Something went wrong"
+  return 1
+}
+
+select_country() {
+  printf "Selecting country... "
+  body="$(run_curl $COUNTRY_URL?code=$1)"
+  code="$(echo $1 | tr '[a-z]' '[A-Z]')"
+  ok="$(echo $body | awk "/current\":\"$code/")"
+
+  if [ "$ok" != "" ]; then
+    echo "Done!"
+    return 0
+  fi
+
+  echo "Something went wrong"
+  return 1
+}
+
+main() {
+  if ! command -v curl &>/dev/null; then
+    echo "You need curl to run this program"
+    return 1
+  fi
+
+  if [ -z $EMAIL ]; then
+    usage
+    return 1
+  fi
+
+  if ! check; then
+    return 1
+  fi
+
+  if [ -z $COUNTRY ]; then
+    return 0
+  fi
+
+  local COUNTRIES="us ar at be br ca co dk fi fr de ie lu mx nl no se ch uk"
+  for c in $COUNTRIES; do
+    if [ $COUNTRY == $c ]; then
+      if ! select_country $c; then
+        return 1
+      fi
+      break
+    fi
+  done
+}
+
+main "$@"
