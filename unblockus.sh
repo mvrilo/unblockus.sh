@@ -23,7 +23,7 @@
 EMAIL="$1"
 COUNTRY="$2"
 CURL=$(which curl)
-CHECK_URL="http://check.unblock-us.com/get-status.php?reactivate=1local "
+CHECK_URL="http://check.unblock-us.com/get-status.php?reactivate=1"
 COUNTRY_URL="http://realcheck.unblock-us.com/set-country.php"
 
 usage() {
